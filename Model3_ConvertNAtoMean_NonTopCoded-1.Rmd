@@ -1,0 +1,1343 @@
+---
+title: "lab02_ITMD514_01"
+author: "Group-8"
+date: "08/30/2024"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+# Sex-related differences using R - Model2
+
+## Chapter 1: Data Cleaning and Preparation
+
+### Package loading
+```{r}
+# We will require the tidyverse library and the Palmer penguins, tidyverse, ggthemes and ggplot2 library. 
+# like example, install.packages("tidyverse")
+# The following loads the library for our use, library and require load and attach add-on packages.
+# library(package, help, pos = 2, lib.loc = NULL, character.only = FALSE, logical.return = FALSE, warn.conflicts, quietly = FALSE, verbose = getOption("verbose"), mask.ok, exclude, include.only, attach.required = missing(include.only))
+#
+funtInstall <- function(package) {
+  if (!require(package, character.only = TRUE)) {
+    install.packages(package, dependencies = TRUE)
+    library(package, character.only = TRUE)
+  }
+}
+
+funtInstall("ggthemes")
+funtInstall("ggplot2")
+funtInstall("ISLR2")
+funtInstall("dplyr")
+funtInstall("forcats")
+funtInstall("nycflights13")
+funtInstall("knitr")
+funtInstall("tidyr")
+funtInstall("purrr")
+funtInstall("tidyverse")
+funtInstall("car")
+funtInstall("broom")
+funtInstall("AER")
+funtInstall("censReg")
+funtInstall("mice")
+funtInstall("Hmisc")
+
+library(ggthemes) # modify ploys.
+library(ggplot2) # A system for 'declaratively' creating graphics, based on "The Grammar of Graphics"
+library(ISLR2) # data set in An Introduction to Statistical Learning. (https://cran.rstudio.com/web/packages/ISLR2/)
+library(dplyr) # By constraining your options, it helps you think about your data manipulation challenges.
+library(forcats) # Helpers for reordering factor levels (including moving specified levels to front, ordering by first appearance, reversing, and randomly shuffling), and tools for modifying factor levels (including collapsing rare levels into other, 'anonymising', and manually 'recoding').
+library(nycflights13) # contains nyc flight data set.
+library(knitr) # The knitr package is an implementation of Literate Programming, a programming paradigm that intermingle code chunks (for computing) with prose (for documentation) in the same document.
+library(tidyr) # tidyr is designed specifically for tidying data, not general reshaping (reshape2), or the general aggregation (reshape).
+library(purrr) # purrr enhances R's functional programming (FP) toolkit by providing a complete and consistent set of tools for working with functions and vectors.
+library(tidyverse) # The 'tidyverse' is a set of packages that work in harmony because they share common data representations and 'API' design. This package is designed to make it easy to install and load multiple 'tidyverse' packages in a single step. Learn more about the 'tidyverse' at https://www.tidyverse.org.
+library(car) # Companion to Applied Regression.
+library(broom) # The broom package takes the messy output of built-in functions in R, such as lm , nls , or t.test , and turns them into tidy tibbles.
+library(AER) # Functions, data sets, examples, demos, and vignettes for the book Christian Kleiber and Achim Zeileis (2008), Applied Econometrics with R, Springer-Verlag, New York. ISBN 978-0-387-77316-2. <doi:10.1007/978-0-387-77318-6> (See the vignette "AER" for a package overview.).
+library(censReg) # Maximum Likelihood estimation of censored regression (Tobit) models with cross-sectional and panel data.
+library(mice) # The mice package implements a method to deal with missing data. (https://www.rdocumentation.org/packages/mice/versions/3.17.0/topics/mice)
+library(Hmisc) # The Hmisc library contains many functions useful for data analysis, high-level graphics, utility operations, functions for computing sample size and power, translating SAS datasets into R, imputing missing values, advanced table making, variable clustering,
+```
+Reference: [https://www.bls.gov/nls/nlsy97.htm#:~:text=The%20NLSY97%20consists%20of%20a,NLSY79/97%20Data%20Harmonization)]
+
+The NLSY97 dataset is the, a study tracking various life outcomes, including income, education, and family background, conducted by the Bureau of Labor Statistics (BLS). 
+
+The analysis focuses on identifying gender(i.e., male, female) differences in income/assets, exploring how these differences vary based on other factors such as employment (i.e., wages, hours, jobs, employment benefits), education (i.e., Career instruction, academic achievement, and attending school.), family background (i.e., socioeconomic status, family structure, the role of parents), race, marital status (i.e., never married, marriage, separation, divorce), and childhood household net worth, criminal history. 
+
+It is basically to make information available for labor demand activities in the market to collect information on American youths' workforce actions along with additional crucial moments. The main idea is to follow an accurate representation that included men and women aged 12 to 16 on December 31 of 1996, while they moved from education through the workforce to growing up.
+Dataset size: Approximately 9000 individuals. (to be the exact 8,984 respondents)
+
+Survey timeline: Initial question interview in 1997; following 1997, further inquiries were carried out either yearly or every two years, to notice changes, and long-term results. 
+
+Data usage: Policy making, Research and scheme evaluation.
+
+### Importing the data from nlsy97.csv into R notebook.
+```{r}
+# Import starting data, data set read 95 columns in total.
+nlsy <- read_csv("nlsy97.csv") # read the data set "nlsy97.csv"
+cat("The 95 columns are: \n", colnames(nlsy))  #print the original columns names.
+```
+
+### Variables present in the base data set
+
+To learn more about the data, you can have a look at the variable code book file available on Canvas.
+Here's how to rename all the variables to the Question Name abbreviation.  **You will want to change the names to be even more descriptive**, but this is a start.
+
+#### See the missing percentage values in each column.
+### Verified from, https://www.nlsinfo.org/investigator/pages/search
+```{r}
+### Change column names to question name abbreviations (you will want to change these further)
+colnames(nlsy) <- c("PSTRAN_GPA.01_PSTR",
+    "INCARC_TOTNUM_XRND", # TOTAL NUMBER OF INCARCERATIONS	
+    "INCARC_AGE_FIRST_XRND",
+    "INCARC_LENGTH_LONGEST_XRND",
+    "PUBID_1997",
+    "YSCH-36400_1997",
+    "YSCH-37000_1997",
+    "YSAQ-010_1997", 
+    "YSAQ-369_1997", # R EVER USE MARIJUANA?	
+    "YEXP-300_1997",
+    "YEXP-1500_1997",
+    "YEXP-1600_1997",
+    "YEXP-1800_1997",
+    "YEXP-2000_1997",
+    "sex",
+    "KEY_BDATE_M_1997",
+    "KEY_BDATE_Y_1997",
+    "PC8-090_1997",
+    "PC8-092_1997",
+    "PC9-002_1997",
+    "PC12-024_1997",
+    "PC12-028_1997",
+    "CV_AGE_12/31/96_1997",
+    "CV_BIO_MOM_AGE_CHILD1_1997",
+    "CV_BIO_MOM_AGE_YOUTH_1997",
+    "CV_CITIZENSHIP_1997",
+    "CV_ENROLLSTAT_1997",
+    "CV_HH_NET_WORTH_P_1997", # NET WORTH OF HOUSEHOLD ACCORDING TO PARENTs (selected)
+    "CV_YTH_REL_HH_CURRENT_1997",
+    "CV_MSA_AGE_12_1997",
+    "CV_URBAN-RURAL_AGE_12_1997",
+    "CV_SAMPLE_TYPE_1997",
+    "CV_HGC_BIO_DAD_1997",
+    "CV_HGC_BIO_MOM_1997",
+    "CV_HGC_RES_DAD_1997",
+    "CV_HGC_RES_MOM_1997",
+    "race",
+    "YSCH-6800_1998",
+    "YSCH-7300_1998",
+    "YSAQ-372B_1998", # R EVER USE COCAINE/HARD DRUGS?	
+    "YSAQ-371_2000", # DAYS USE MARIJUANA IN LAST 30 DAYS?	
+    "YSAQ-282J_2002", 
+    "YSAQ-282Q_2002", 
+    "CV_HH_NET_WORTH_Y_2003", # NET WORTH OF HOUSEHOLD ACCORDING TO R	
+    "CV_BA_CREDITS.01_2004",
+    "YSAQ-000B_2004", 
+    "YSAQ-373_2004", 
+    "YSAQ-369_2005", # R EVER USE MARIJUANA?
+    "CV_BIO_CHILD_HH_2007",
+    "YTEL-52~000001_2007",
+    "YTEL-52~000002_2007",
+    "YTEL-52~000003_2007",
+    "YTEL-52~000004_2007",
+    "CV_BIO_CHILD_HH_2009",
+    "CV_COLLEGE_TYPE.01_2011",
+    "CV_INCOME_FAMILY_2011",
+    "CV_HH_SIZE_2011", # HOUSEHOLD SIZE	
+    "CV_HH_UNDER_18_2011", # NUMBER OF HOUSEHOLD MEMBERS UNDER AGE 18	
+    "CV_HH_UNDER_6_2011", # NUMBER OF HOUSEHOLD MEMBERS UNDER AGE 6	
+    "CV_HIGHEST_DEGREE_1112_2011",
+    "CV_BIO_CHILD_HH_2011",
+    "YSCH-3112_2011",
+    "YSAQ-000A000001_2011", 
+    "YSAQ-000A000002_2011", 
+    "YSAQ-000B_2011", 
+    "YSAQ-360C_2011", 
+    "YSAQ-364D_2011", 
+    "YSAQ-371_2011", 
+    "YSAQ-372CC_2011", 
+    "YSAQ-373_2011", 
+    "YSAQ-374_2011", 
+    "YEMP_INDCODE-2002.01_2011",
+    "CV_BIO_CHILD_HH_2015",
+    "YEMP_INDCODE-2002.01_2017",
+    "YEMP_OCCODE-2002.01_2017",
+    "CV_MARSTAT_COLLAPSED_2017",
+    "YINC-1400_2017",
+    "income",  # YINC-1700_2017
+    "YINC-1800_2017",
+    "YINC-2400_2017",
+    "YINC-2600_2017",
+    "YINC-2700_2017",
+    "CVC_YTH_REL_HH_AGE6_YCHR_XRND",
+    "CVC_SAT_MATH_SCORE_2007_XRND",
+    "CVC_SAT_VERBAL_SCORE_2007_XRND",
+    "CVC_ACT_SCORE_2007_XRND",
+    "CVC_HH_NET_WORTH_20_XRND",
+    "CVC_HH_NET_WORTH_25_XRND",
+    "CVC_ASSETS_FINANCIAL_25_XRND",
+    "CVC_ASSETS_DEBTS_20_XRND",
+    "CVC_HH_NET_WORTH_30_XRND",
+    "CVC_HOUSE_VALUE_30_XRND",
+    "CVC_HOUSE_TYPE_30_XRND",
+    "CVC_ASSETS_FINANCIAL_30_XRND",
+    "CVC_ASSETS_DEBTS_30_XRND")
+
+### Set all negative values to NA.  
+# THIS IS DONE ONLY FOR ILLUSTRATIVE PURPOSES
+# DO NOT TAKE THIS APPROACH WITHOUT CAREFUL JUSTIFICATION
+nlsy[nlsy < 0]  <- NA  # Turned all negative values to NA..
+
+### Calculate the percentage of missing values per column
+# Form row and column sums and means for numeric arrays (or data frames).
+# nrow and ncol return the number of rows or columns present in x. NCOL and NROW do the same treating a vector as 1-column matrix, even a 0-length vector, compatibly with as.matrix() or cbind(), see the example. Example is, colSums (x, na.rm = FALSE, dims = 1)
+# nrow and ncol return the number of rows or columns present in x. NCOL and NROW do the same treating a vector as 1-column matrix, even a 0-length vector, compatibly with as.matrix() or cbind(), see the example.
+temp_na <- colSums(is.na(nlsy), # x: an array of two or more dimensions, containing numeric, complex, integer or logical values, or a numeric data frame.
+                   na.rm = FALSE, # logical. Should missing values (including NaN) be omitted from the calculations?
+                   dims = 1) / nrow(nlsy) * 100 # integer: Which dimensions are regarded as ‘rows’ or ‘columns’ to sum over.
+
+### The function data.frame() creates data frames, tightly coupled collections of variables which share many of the properties of matrices and of lists, used as the fundamental data structure by most of R's modeling software.
+temp_na_dataset <- data.frame(
+    Column = colnames(nlsy),
+    na_temp_rows = temp_na,
+    row.names = NULL, # NULL or a single integer or character string specifying a column to be used as row names, or a character or integer vector giving the row names for the data frame.
+    check.rows = FALSE, # if TRUE then the rows are checked for consistency of length and names.
+    check.names = TRUE, # logical. If TRUE then the names of the variables in the data frame are checked to ensure that they are syntactically valid variable names and are not duplicated. If necessary they are adjusted (by make.names) so that they are.
+    fix.empty.names = TRUE, # logical indicating if arguments which are “unnamed” (in the sense of not being formally called as someName = arg) get an automatically constructed name or rather name "". Needs to be set to FALSE even when check.names is false if "" names should be kept.
+    stringsAsFactors = FALSE # logical: should character vectors be converted to factors? The ‘factory-fresh’ default has been TRUE previously but has been changed to FALSE for R 4.0.0.
+)
+
+### Sorting in descending order (shows big missing values first), to get missing values column wise, using the '-' sign.
+temp_na_dataset_df <- temp_na_dataset[order(-temp_na_dataset$na_temp_rows), 
+                                      ]
+
+### Display the sorted data frame missing_data from the last column.
+print(temp_na_dataset_df, # Sorting in descending order (shows big missing values first), to get missing values column wise, using the '-' sign.
+      n = nrow(temp_na_dataset_df), # number of rows equal to nrow.
+      na.print = "") # character string (or NULL) indicating NA values in printed output, see print.default.
+```
+
+### Choose the column Sex-related differences vs Race-related differences:
+### Verified from, https://www.nlsinfo.org/investigator/pages/search
+```{r}
+### Sex-based differences, choose the column according to question.
+# Sex-related differences: Is there a significant difference in income between men and women? Does the difference vary depending on other factors (e.g., education, marital status, criminal history, drug use, childhood household factors, profession, etc.)
+sex_based_diff_var <- c(
+  "income",                       # The dependent income in 2017, YINC-1700_2017, U2857200.
+  "sex",                          # Sex : Male (1), Female (2). (factorized for analysis)
+  "race",                         # Race : Black (1), Hispanic (2), Mixed Race (Non-Hispanic) (3), Non-Black/Non-Hispanic (4)
+  "CV_HGC_BIO_MOM_1997",          # Biological Mom's highest grade completed.
+  "CV_HGC_BIO_DAD_1997",          # Biological Dad's highest grade completed.
+  "CV_HIGHEST_DEGREE_1112_2011",  # Education level, Highest degree attained by 2011 (Total eight categories from no formal education to graduate degree)
+  "CV_MARSTAT_COLLAPSED_2017",    # Marital status, Five categories, including Never Married, Married, Separated, Divorced, Widowed.
+  "INCARC_TOTNUM_XRND",           # Total number of incarcerations, since the past criminal history affects income of the future.
+  "CV_HH_NET_WORTH_P_1997",       # Childhood household net worth for wealth related advantages/disadvantages.
+  "YSAQ-371_2000",                # Drug use history (last 30 days history)
+  "YEMP_OCCODE-2002.01_2017",     # Occupation, as different job has different incomes.
+  "YEMP_INDCODE-2002.01_2017",    # Industry of employment, affects different income levels.
+#  "CV_URBAN-RURAL_AGE_12_1997",   # RS RESIDENCE URBAN OR RURAL AT AGE 12	
+  "CV_AGE_12/31/96_1997"         # Age to experience related income differences. (How young the respond-er was at 12/31/96-1997)
+)
+
+### Race-based differences, choose the column according to question.
+# Race-related differences: Is there a significant difference in income across racial groups? Does the difference vary depending on other factors (e.g., education, marital status, criminal history, drug use, childhood household factors, profession, etc.)? Note: for this problem you may find it easiest to focus on differences between just two groups. E.g., Black and non-Black, non-Hispanic.
+race_based_diff_var <- c(
+  "income",                       # The dependent income in 2017, YINC-1700_2017, U2857200.
+  "sex",                          # Sex : Male (1), Female (2). (factorized for analysis)
+  "race",                         # Race : Black (1), Hispanic (2), Mixed Race (Non-Hispanic) (3), Non-Black/Non-Hispanic (4)
+  "CV_HGC_BIO_MOM_1997",          # Biological Mom's highest grade completed.
+  "CV_HGC_BIO_DAD_1997",          # Biological Dad's highest grade completed.
+  "CV_HIGHEST_DEGREE_1112_2011",  # Education level, Highest degree attained by 2011 (Total eight categories from no formal education to graduate degree)
+  "CV_MARSTAT_COLLAPSED_2017",    # Marital status, Five categories, including Never Married, Married, Separated, Divorced, Widowed.
+  "INCARC_TOTNUM_XRND",           # Total number of incarcerations, since the past criminal history affects income of the future.
+  "CV_HH_NET_WORTH_P_1997",       # Childhood household net worth for wealth related advantages/disadvantages.
+  "YSAQ-371_2000",                # Drug use history (last 30 days history)
+  "YEMP_OCCODE-2002.01_2017",     # Occupation, as different job has different incomes.
+  "YEMP_INDCODE-2002.01_2017",    # Industry of employment, affects different income levels.
+#  "CV_URBAN-RURAL_AGE_12_1997",   # RS RESIDENCE URBAN OR RURAL AT AGE 12	
+  "CV_AGE_12/31/96_1997"         # Age to experience related income differences. (How young the respond-er was at 12/31/96-1997)
+)
+
+### Find the unique columns between Sex-based differences and Race-based differences.
+### incomparables: a vector of values that cannot be compared. FALSE is a special value, meaning that all values can be compared, and may be the only value accepted for methods other than the default. It will be coerced internally to the same type as x.
+# fromLast: logical indicating if duplication should be considered from the last, i.e., the last (or rightmost) of identical elements will be kept. This only matters for names or dimnames.
+# nmax: the maximum number of unique items expected (greater than one). 100 is to multiply to show into percentage.  
+null_data_dataframe <- data.frame(
+  Column = names(colSums(is.na(nlsy[, unique(c(sex_based_diff_var, race_based_diff_var), 
+                                             incomparables = FALSE, 
+                                             fromLast = FALSE,
+                                             nmax = NA)])) / nrow(nlsy[, unique(c(sex_based_diff_var, race_based_diff_var), 
+                                                                                incomparables = FALSE, 
+                                                                                fromLast = FALSE,
+                                                                                nmax = NA)]) * 100),
+  na_temp_rows = colSums(is.na(nlsy[, unique(c(sex_based_diff_var, race_based_diff_var),
+                                             incomparables = FALSE, 
+                                             fromLast = FALSE,
+                                             nmax = NA)])) / nrow(nlsy[, unique(c(sex_based_diff_var, race_based_diff_var),
+                                                                                incomparables = FALSE, 
+                                                                                fromLast = FALSE,
+                                                                                nmax = NA)]) * 100
+)
+
+### Sorting in descending order (shows big missing values first), to see missing values column wise.
+### order returns a permutation which rearranges its first argument into ascending or descending order, breaking ties by further arguments. sort.list is the same, using only one argument. See the examples for how to use these functions to sort data frames, etc.
+### order(…, na.last = TRUE, decreasing = FALSE, method = c("auto", "shell", "radix"))
+null_values_df_temp <- null_data_dataframe[order(-null_data_dataframe$na_temp_rows), 
+                                           ]
+
+# Display the results
+print("(FOR BOTH SEX-BASED DIFFERENCES AND RACE-BASED DIFFERENCES) Display the Sorting in descending order (shows big missing values first), to see missing values column wise")
+print(null_values_df_temp)
+```
+
+### SEX AND RACE BASED DATA 
+```{r}
+# all_of(vars)/any_of(vars): matches names stored in the character vector vars. all_of(vars) will error if the variables aren't present; any_of(var) will match just the variables that exist.
+# We want all the columns from the data set, so we are using all_of only for sex_based_diff_var defined above.
+nlsy_sex_based_subset <- nlsy %>% 
+  select(all_of(sex_based_diff_var))
+
+# all_of(vars)/any_of(vars): matches names stored in the character vector vars. all_of(vars) will error if the variables aren't present; any_of(var) will match just the variables that exist.
+# We want all the columns from the data set, so we are using all_of only for race_based_diff_var defined above.
+nlsy_race_based_subset <- nlsy %>% 
+  select(all_of(race_based_diff_var))
+```
+
+
+### (Sex-related differences) A note on missing values 
+```{r}
+### summarise() creates a new data frame. It returns one row for each combination of grouping variables; if there are no grouping variables, the output will have a single row summarising all observations in the input. It will contain one column for each grouping variable and one column for each of the summary statistics that you have specified.
+### across() makes it easy to apply the same transformation to multiple columns, allowing you to use select() semantics inside in "data-masking" functions like summarise() and mutate(). See vignette("colwise") for more details.
+### pivot_longer() "lengthens" data, increasing the number of rows and decreasing the number of columns. The inverse transformation is pivot_wider()
+
+summey_NA_vals_temp1 <- nlsy_sex_based_subset %>%
+  summarise(across(everything(), # for all columns. Same like across(,...)
+                   ~ mean(is.na(.)), # show the fraction of missing values.
+                   .names = NULL, 
+                   .unpack = FALSE),
+            .by = NULL, 
+            .groups = NULL) %>% 
+  pivot_longer(cols=everything(), 
+               names_to="nlsy_columns", # nsly columns.
+               values_to="Missing_NA_Proportion_sex_based",
+               cols_vary = "fastest",
+               names_prefix = NULL,
+               names_sep = NULL,
+               names_pattern = NULL,
+               names_ptypes = NULL,
+               names_transform = NULL,
+               names_repair = "check_unique",
+               values_drop_na = FALSE,
+               values_ptypes = NULL,
+               values_transform = NULL) # Missing values i.e., NA
+
+summey_NA_vals_top_temp1 <- summey_NA_vals_temp1 %>%  #Arrange the top 40 column of the values represented, arranged by Missing_NA_Proportion. 
+  arrange(-Missing_NA_Proportion_sex_based) %>% # head only 40 rows.
+  head(40)
+
+# ggplot() initializes a ggplot object. It can be used to declare the input data frame for a graphic and to specify the set of plot aesthetics intended to be common throughout all subsequent layers unless specifically overridden.
+# reorder is a generic function. The "default" method treats its first argument as a categorical variable, and reorders its levels based on the values of a second variable, usually numeric.
+# reorder(x, X, FUN = mean, ...,order = is.ordered(x), decreasing = FALSE)
+# x, y : <data-masking> List of name-value pairs in the form aesthetic = variable describing which variables in the layer data should be mapped to which aesthetics used by the paired geom/stat. The expression variable is evaluated within the layer data, so there is no need to refer to the original dataset (i.e., use ggplot(df, aes(variable)) instead of ggplot(df, aes(df$variable))). The names for x and y aesthetics are typically omitted because they are so common; all other aesthetics must be named.
+# Good labels are critical for making your plots accessible to a wider audience. Always ensure the axis and legend labels display the full variable name. Use the plot title and subtitle to explain the main findings. It's common to use the caption to provide information about the data source. tag can be used for adding identification tags to differentiate between multiple plots.
+# theme: Themes are a powerful way to customize the non-data components of your plots: i.e. titles, labels, fonts, background, gridlines, and legends. Themes can be used to give plots a consistent customized look. Modify a single plot's theme using theme(); see theme_update() if you want modify the active theme, to affect all subsequent plots. Use the themes available in complete themes if you would like to use a complete theme such as theme_bw(), theme_minimal(), and more. Theme elements are documented together according to inheritance, read more about theme inheritance below.
+
+ggplot(summey_NA_vals_top_temp1, 
+       mapping = aes(x = reorder(nlsy_columns, # show nlsy_columns
+                        -Missing_NA_Proportion_sex_based), # a vector of the same length as x, whose subset of values for each unique level of x determines the eventual order of that level.
+                    y = Missing_NA_Proportion_sex_based)) + 
+  geom_bar(stat = "identity",
+           just = 0.5,
+           width = NULL,
+           na.rm = FALSE,
+           orientation = NA,
+           show.legend = NA,
+           inherit.aes = TRUE) + 
+  coord_flip() + # This function is superseded because in many cases, coord_flip() can easily be replaced by swapping the x and y aesthetics, or optionally setting the orientation argument in geom and stat layers.
+  labs(title = "Top 20 columns by Missing Proportion in Sex-based differences in income", 
+       x = "NLSY columns", 
+       y = "Misisng Proportion",
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()) +
+  theme_minimal(base_size = 11) + # These are complete themes which control all non-data display. Use theme() if you just need to tweak the display of an existing theme.
+  theme(
+    axis.text.y = element_text(size = 7),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+```
+### (Race-related differences) A note on missing values 
+```{r}
+### summarise() creates a new data frame. It returns one row for each combination of grouping variables; if there are no grouping variables, the output will have a single row summarising all observations in the input. It will contain one column for each grouping variable and one column for each of the summary statistics that you have specified.
+### across() makes it easy to apply the same transformation to multiple columns, allowing you to use select() semantics inside in "data-masking" functions like summarise() and mutate(). See vignette("colwise") for more details.
+### pivot_longer() "lengthens" data, increasing the number of rows and decreasing the number of columns. The inverse transformation is pivot_wider()
+
+summey_NA_vals_temp2 <- nlsy_race_based_subset %>%
+  summarise(across(everything(), # for all columns.
+                   ~ mean(is.na(.)), # show the fraction of missing values.
+                   .names = NULL, 
+                   .unpack = FALSE),
+            .by = NULL, 
+            .groups = NULL) %>% 
+  pivot_longer(cols=everything(), 
+               names_to="nlsy_columns", # nsly columns.
+               values_to="Missing_NA_Proportion_race_based",
+               cols_vary = "fastest",
+               names_prefix = NULL,
+               names_sep = NULL,
+               names_pattern = NULL,
+               names_ptypes = NULL,
+               names_transform = NULL,
+               names_repair = "check_unique",
+               values_drop_na = FALSE,
+               values_ptypes = NULL,
+               values_transform = NULL) # Missing values i.e., NA
+
+summey_NA_vals_top_temp2 <- summey_NA_vals_temp2 %>%  #Arrange the top 40 column of the values represented, arranged by Missing_NA_Proportion. 
+  arrange(-Missing_NA_Proportion_race_based) %>% 
+  head(40)
+
+# ggplot() initializes a ggplot object. It can be used to declare the input data frame for a graphic and to specify the set of plot aesthetics intended to be common throughout all subsequent layers unless specifically overridden.
+# reorder is a generic function. The "default" method treats its first argument as a categorical variable, and reorders its levels based on the values of a second variable, usually numeric.
+# reorder(x, X, FUN = mean, ...,order = is.ordered(x), decreasing = FALSE)
+# x, y : <data-masking> List of name-value pairs in the form aesthetic = variable describing which variables in the layer data should be mapped to which aesthetics used by the paired geom/stat. The expression variable is evaluated within the layer data, so there is no need to refer to the original dataset (i.e., use ggplot(df, aes(variable)) instead of ggplot(df, aes(df$variable))). The names for x and y aesthetics are typically omitted because they are so common; all other aesthetics must be named.
+# Good labels are critical for making your plots accessible to a wider audience. Always ensure the axis and legend labels display the full variable name. Use the plot title and subtitle to explain the main findings. It's common to use the caption to provide information about the data source. tag can be used for adding identification tags to differentiate between multiple plots.
+# theme: Themes are a powerful way to customize the non-data components of your plots: i.e. titles, labels, fonts, background, gridlines, and legends. Themes can be used to give plots a consistent customized look. Modify a single plot's theme using theme(); see theme_update() if you want modify the active theme, to affect all subsequent plots. Use the themes available in complete themes if you would like to use a complete theme such as theme_bw(), theme_minimal(), and more. Theme elements are documented together according to inheritance, read more about theme inheritance below.
+
+ggplot(summey_NA_vals_top_temp2, 
+       mapping = aes(x = reorder(nlsy_columns, # show nlsy_columns
+                        -Missing_NA_Proportion_race_based), # a vector of the same length as x, whose subset of values for each unique level of x determines the eventual order of that level.
+                    y = Missing_NA_Proportion_race_based)) + 
+  geom_bar(stat = "identity",
+           just = 0.5,
+           width = NULL,
+           na.rm = FALSE,
+           orientation = NA,
+           show.legend = NA,
+           inherit.aes = TRUE) + 
+  coord_flip() + # This function is superseded because in many cases, coord_flip() can easily be replaced by swapping the x and y aesthetics, or optionally setting the orientation argument in geom and stat layers.
+  labs(title = "Top 20 columns by Missing Proportion in Race-based differences in income", 
+       x = "NLSY columns", 
+       y = "Misisng Proportion") +
+  theme_minimal(base_size = 11) + # These are complete themes which control all non-data display. Use theme() if you just need to tweak the display of an existing theme.
+  theme(
+    axis.text.y = element_text(size = 7),
+    plot.title = element_text(hjust = 0.5)
+  )
+```
+
+Here's an example of what the variable description files look like
+
+```
+T76400.00    [YSAQ-372CC]                                   Survey Year: 2011
+  PRIMARY VARIABLE
+
+ 
+             HAS R USED COCAINE/HARD DRUGS SINCE DLI?
+ 
+Excluding marijuana and alcohol, since the date of last interview, have you used
+any drugs like cocaine, crack, heroin, or crystal meth, or any other substance 
+not prescribed by a doctor, in order to get high or to achieve an altered state?
+ 
+UNIVERSE: All except prisoners in an insecure environment
+ 
+     215       1 YES   (Go To T76401.00)
+    7023       0 NO
+  -------
+    7238
+ 
+Refusal(-1)           74
+Don't Know(-2)        26
+TOTAL =========>    7338   VALID SKIP(-4)      85     NON-INTERVIEW(-5)    1561
+ 
+Min:              0        Max:              1        Mean:                 .03
+ 
+Lead In: T76397.00[Default] T76399.00[Default]  T76398.00[0:0]
+Default Next Question: T76403.00
+```
+
+### Missing variable and Topcoded variables decision.
+```{r}
+####################################################################### HANDLING MISSING MEAN VALUES #######################################################################
+
+# Take the mean of the respective column and put it instead of NA for the dependent variable income.
+nlsy_sex_based_subset$income[is.na(nlsy_sex_based_subset$income)] <- mean(nlsy_sex_based_subset$income,
+                                                                          na.rm = TRUE)
+
+# Factor independent variables, get all the NA data for each column and put into NA new category.
+for(tempCol in c("CV_HGC_BIO_MOM_1997", "CV_HGC_BIO_DAD_1997", "CV_HIGHEST_DEGREE_1112_2011", "CV_MARSTAT_COLLAPSED_2017",  "INCARC_TOTNUM_XRND", "YEMP_OCCODE.2002.01_2017",  "YEMP_INDCODE.2002.01_2017")) { # for each categorical column mentioned here,
+  if(tempCol %in% colnames(nlsy_sex_based_subset)){ # for each columns mentioned above, if...exists
+    nlsy_sex_based_subset[[tempCol]] <- as.factor(nlsy_sex_based_subset[[tempCol]]) # converts each column into categorical data. as.factor for categorical data.
+    levels(nlsy_sex_based_subset[[tempCol]]) <- c(levels(nlsy_sex_based_subset[[tempCol]]), "NA") # Add new factor NA here for each column.
+    nlsy_sex_based_subset[[tempCol]][is.na(nlsy_sex_based_subset[[tempCol]])] <- "NA" # Add NA data for each column into new "NA" category.
+  }
+}
+
+# impute missing variables for the following continues variables.
+tempMice <- nlsy_sex_based_subset[c("CV_HGC_BIO_MOM_1997", "CV_HGC_BIO_DAD_1997", "CV_HH_NET_WORTH_P_1997", "YSAQ-371_2000")]
+imputedData <- mice(tempMice, m=5, method="pmm", maxit=5, seed=123)
+# (dataset, number of impute dataset to be created with variability and uncertainty,  Predictive Mean Matching, maximum number of iterations, random seed for reproducability)
+# data : A data frame or a matrix containing the incomplete data. Missing values are coded as NA.
+# m ; Number of multiple imputations. The default is m=5.
+# method : Can be either a single string, or a vector of strings with length length(blocks), specifying the imputation method to be used for each column in data. If specified as a single string, the same method will be used for all blocks. The default imputation method (when no argument is specified) depends on the measurement level of the target column, as regulated by the defaultMethod argument. Columns that need not be imputed have the empty method "". See details.
+# defaultMethod: A vector of length 4 containing the default imputation methods for 1) numeric data, 2) factor data with 2 levels, 3) factor data with > 2 unordered levels, and 4) factor data with > 2 ordered levels. By default, the method uses pmm, predictive mean matching (numeric data) logreg, logistic regression imputation (binary data, factor with 2 levels) polyreg, polytomous regression imputation for unordered categorical data (factor > 2 levels) polr, proportional odds model for (ordered, > 2 levels).
+# maxit: A scalar giving the number of iterations. The default is 5.
+# seed: An integer that is used as argument by the set.seed() for offsetting the random number generator. Default is to leave the random number generator alone.
+
+cat("2. i. How did you deal with missing values? What impact does your approach have on the interpretation or generalizability of the resulting analysis?")
+cat("Ans: So, we come up with four solutions:
+1.	(Model-1) Not omitting a single NA value (all dataset) : 8,984 datapoints. Advantages: All data available, full dataset. Good when we miss missing variables in the database to train the model. DisAdvantages: Simple bias available when we have lots of misisng data, almost around 10,000. Skewed result. May overfit patterns, even noise are present.
+2.	(Model-2) Omit observations with all missing value/-s in a row, even when the single missing values in the row (e.g. remove any rows that contain missing data) : 699 datapoints. Advantages: Make sure the reliable data and no missing values present. Disadvantages: Around 77% rows will be deleted so, sample size will be too small and again potential bias, compared to original sample size. It will not show correct result.
+3.	(CURRENT Model-3) Variables with meaningless above 80% excluded and moderate-missingness variables imputed using mean for dependent variable and imputation for continuous variable and different ‘NA’ category for missing variables.Right now, we are applying Model-3. Imputation process improves the model and minimise the bias. Better than previous two models. But, imputation is not accurate data, so probably not entirely reliable process. https://www.rdocumentation.org/packages/mlr/versions/2.19.1/topics/impute")
+
+####################################################################### TABULAR SUMMARY #######################################################################
+# nlsy_sex_based_subset <- na.omit(nlsy_sex_based_subset)  # Drops rows with any NA values.
+# nlsy_sex_based_subset <- nlsy_sex_based_subset[!is.na(nlsy_sex_based_subset$income), ]  # Drops row where nlsy_sex_based_subset's income column.
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+####################################### TOP CODED ###########################################
+
+cat("2. ii. How did you deal with topcoded variables? What impact does your approach have on the interpretation or generalizability of the resulting analysis?")
+# b.	Income Top coding: (As the 2nd method suggested by the Professor)
+# i.	Try fitting the regression models / running hypothesis tests two ways
+# 1.	First way: include the top coded observations
+# 2.	Second way: exclude all observations with top coded outcomes
+# 3.	If your estimates change a lot, then you probably don't want to use the top coded observations
+# 4.	If you go this route, be sure to explain what omitting the high earning individuals means for the scope of your conclusions.
+# 5.	We find out that by removing top coded values give us better results in regression models / running hypothesis tests by looking at p-values and co-efficient. Although We are comparing all the results, just to verify it.
+# Impact: By removing top 2% top-coded observations, it will probably have a new bias, by relationship at the upper tail. We don't have high-earners data now. Now, we have dataset less than or around 150k income, compared to previous one.But the results of removing top-coded will get a better p-value but impact is unknown yet (need to check). But, we will not hav ethe upper tail data now.We need to compare both models as professor suggested.
+
+# Get the top-coded income value. Get the maximum value.
+topcoded_temp <- max(nlsy_sex_based_subset$income, 
+                     na.rm = TRUE)
+cat("topcoded value: ", topcoded_temp)
+
+# Get the number of rows with the ssame top-coded value we have gotten in the last row. with(data, expr, …)
+# sum returns the sum of all the values present in its arguments.
+n.topcoded <- with(nlsy_sex_based_subset, 
+                   sum(income == topcoded_temp, 
+                       na.rm = TRUE))
+cat("\n\nNo of n.topcoded items: ", n.topcoded)
+
+# Get the subset of topcoded values from nlsy_sex_based_subset.
+nlsy_sex_based_subset$topcoded <- nlsy_sex_based_subset$income == topcoded_temp
+
+# Fit regression analysis: (including top-coded observations). We are using hierarchical kind of modeling, where we can see the results. Get the summary.
+lm_topcoded_incl_top_coded_obser <- lm(income ~ factor(sex) * CV_HGC_BIO_MOM_1997 +
+                        factor(sex) * CV_HGC_BIO_DAD_1997 + factor(sex) * CV_HIGHEST_DEGREE_1112_2011 +
+                        factor(sex) * CV_MARSTAT_COLLAPSED_2017 + factor(sex) * INCARC_TOTNUM_XRND +
+                        factor(sex) * CV_HH_NET_WORTH_P_1997 + factor(sex) * `YSAQ-371_2000` +
+                        factor(sex) * `YEMP_OCCODE-2002.01_2017` + factor(sex) * `YEMP_INDCODE-2002.01_2017` +
+                        factor(sex) * `CV_AGE_12/31/96_1997`, data = nlsy_sex_based_subset)
+
+summary(lm_topcoded_incl_top_coded_obser)
+
+# Remove the top coded value and create a new dataset, nlsy_sex_based_subset_not_topcoded.
+# Use filter() find rows/cases where conditions are true. Unlike base subsetting with [, rows where the condition evaluates to NA are dropped. filter(.data, ...)
+nlsy_sex_based_subset_not_topcoded <- nlsy_sex_based_subset %>%
+                                      filter(income != topcoded_temp)
+
+# Fit regression analysis: (Not including top-coded observations). Get the summary.
+lm_topcoded_not_incl_top_coded_obser <- lm(income ~ factor(sex) * CV_HGC_BIO_MOM_1997 +
+                        factor(sex) * CV_HGC_BIO_DAD_1997 + factor(sex) * CV_HIGHEST_DEGREE_1112_2011 +
+                        factor(sex) * CV_MARSTAT_COLLAPSED_2017 + factor(sex) * INCARC_TOTNUM_XRND +
+                        factor(sex) * CV_HH_NET_WORTH_P_1997 + factor(sex) * `YSAQ-371_2000` +
+                        factor(sex) * `YEMP_OCCODE-2002.01_2017` + factor(sex) * `YEMP_INDCODE-2002.01_2017` +
+                        factor(sex) * `CV_AGE_12/31/96_1997`, data = nlsy_sex_based_subset_not_topcoded)
+
+summary(lm_topcoded_incl_top_coded_obser)
+
+# The output of tidy is always a data.frame with disposable row names. It is therefore suited for further manipulation by packages like dplyr, reshape2, ggplot2 and ggvis.
+# tidy(x, ...)
+lm_topcoded_incld_top_coded_obser_res <- tidy(lm_topcoded_incl_top_coded_obser)
+lm_topcoded_not_incld_top_coded_obser_res <- tidy(lm_topcoded_not_incl_top_coded_obser)
+
+# Merge two data frames by common columns or row names, or do other versions of database join operations and print it.
+# merge(x, y, …)
+# data frames, or objects to be coerced to one.
+# by: specifications of the columns used for merging. See ‘Details’.
+# suffixes: a character vector of length 2 specifying the suffixes to be used for making unique the names of columns in the result which are not used for merging (appearing in by etc).
+m_topcoded_incld_top_coded_obser_res_diff <- merge(
+  lm_topcoded_incld_top_coded_obser_res,
+  lm_topcoded_not_incld_top_coded_obser_res,
+  by = "term",
+  suffixes = c("_incld_topcoded", "_not_incld_topcoded")
+)
+
+print(m_topcoded_incld_top_coded_obser_res_diff)
+
+# After comparing the results from precious row, If we want to remove top-coded rows, we can get the rows to remove and remove it from the dataset.
+rows_to_remove = which(nlsy_sex_based_subset$income == topcoded_temp)
+if (length(rows_to_remove) > 0) {
+  nlsy_sex_based_subset <- nlsy_sex_based_subset[-rows_to_remove, ]
+}
+
+# print the number of NA in each column in dataset. How many number of rows present into the dataset?
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+```
+
+
+
+This description says that the numbers -1, -2, -4 and -5 all have a special meaning for this variable.  They denote different types of missingness.  You can recode all of these to `NA`, but you should also think about whether the different missigness indicators are in some way informative.  (i.e., if someone refuses to answer questions related to drug use, might this inform us about their income?) 
+
+#### Getting to know our two main variables.
+In the previous chunk of code we have appropriately renamed the variables corresponding to `sex`, `race` and `income` (as reported on the 2017 survey).  Let's have a quick look at what we're working with.
+
+# SECTION - 3: Analysis and Findings, SEX-BASED ANALYSIS.
+### Tabular Summaries.
+```{r}
+# omit missing values
+# nlsy_sex_based_subset <- na.omit(nlsy_sex_based_subset)
+# rows_with_na <- apply(nlsy_sex_based_subset, 1, function(row) any(is.na(row)))
+# print(sum(rows_with_na))
+
+# mutate() creates new columns that are functions of existing variables. It can also modify (if the name is the same as an existing column) and delete columns (by setting their value to NULL). mutate(.data, ...)
+# case_when(): This function allows you to vectorise multiple if_else() statements. Each case is evaluated sequentially and the first match for each element determines the corresponding value in the output vector. If no cases match, the .default is used as a final "else" statement.
+
+# 'Sex' as a factor with 3 levels: Male, Female, and NA in the sex column.
+nlsy_sex_based_subset <- nlsy_sex_based_subset %>%
+  mutate(
+    sex = case_when(
+      is.na(sex) ~ "NA", # Replace NA with "NA" label
+      sex == 1 ~ "Male", # Recode 1 as "Male"
+      sex == 2 ~ "Female", # Recode 2 as "Female"
+      .default = NULL,
+      .ptype = NULL,
+      .size = NULL
+    ),
+    sex = factor(sex,
+                 levels = c("Male", "Female", "NA"), # 3 level categories.
+                 exclude = NA, # a vector of values to be excluded when forming the set of levels. This may be factor with the same level set as x or should be a character.
+                 nmax = NA), # an upper bound on the number of levels; see ‘Details’.
+
+    .by = NULL, # <tidy-select> Optionally, a selection of columns to group by for just this operation, functioning as an alternative to group_by(). For details and examples, see ?dplyr_by.
+    .keep = c("all", "used", "unused", "none"), # Control which columns from .data are retained in the output. Grouping columns and columns created by ... are always kept.
+    .before = NULL, # <tidy-select> Optionally, control where new columns should appear (the default is to add to the right hand side). See relocate() for more details.
+    .after = NULL
+  )
+
+names(nlsy_race_based_subset)
+
+# 'Sex' as a factor with 3 levels: Male, Female, and NA
+# 'Race' as a factor with 4 levels: Black, Hispanic, Mixed Race, Non-Black / Non-Hispanic.
+nlsy_race_based_subset <- nlsy_race_based_subset %>%
+  mutate(
+    sex = case_when(
+      is.na(sex) ~ "NA", # Replace NA with "NA" label
+      sex == 1 ~ "Male", # Recode 1 as "Male"
+      sex == 2 ~ "Female", # Recode 2 as "Female"
+      .default = NULL, 
+      .ptype = NULL, 
+      .size = NULL
+    ),
+    race = case_when(
+      is.na(sex) ~ "NA", # Replace NA with "NA" label
+      race == 1 ~ "Black", # 1 as "Black"
+      race == 2 ~ "Hispanic", # 2 as "Hispanic",
+      race == 3 ~ "Mixed Race (Non-Hispanic)", # 3 as "Mixed Race (Non-Hispanic)",
+      race == 4 ~ "Non-Black / Non-Hispanic", # 4 as "Non-Black / Non-Hispanic"
+      .default = NULL, 
+      .ptype = NULL, 
+      .size = NULL
+    ),
+    sex = factor(sex, 
+                 levels = c("Male", "Female", "NA"),
+                 exclude = NA, # a vector of values to be excluded when forming the set of levels. This may be factor with the same level set as x or should be a character.
+                 nmax = NA), # an upper bound on the number of levels; see ‘Details’.
+    race = factor(race, 
+                  levels = c("Black", "Hispanic", "Mixed Race (Non-Hispanic)", "Non-Black / Non-Hispanic", "NA"),
+                  exclude = NA, 
+                  nmax = NA), 
+    .by = NULL, # <tidy-select> Optionally, a selection of columns to group by for just this operation, functioning as an alternative to group_by(). For details and examples, see ?dplyr_by.
+    .keep = c("all", "used", "unused", "none"), # Control which columns from .data are retained in the output. Grouping columns and columns created by ... are always kept.
+    .before = NULL, # <tidy-select> Optionally, control where new columns should appear (the default is to add to the right hand side). See relocate() for more details.
+    .after = NULL
+  )
+
+# Gotten an error, so, mention what specific summarize do we need to use.
+summarize <- plyr::summarize
+
+#### Sex based mean, median, sd, min and max and print it.
+summary_sex_based_table <- nlsy_sex_based_subset %>%
+  group_by(sex) %>% # group by sex.
+  dplyr::summarize( #summarize
+    mean_income = mean(income, na.rm = TRUE), # Mean income of the column.
+    median_income = median(income, na.rm = TRUE), # Median income of the column.
+    sd_income = sd(income, na.rm = TRUE), # Std. Div. income of the column.
+    min_income = min(income, na.rm = TRUE), # min income of the column.
+    max_income = max(income, na.rm = TRUE), # max income of the column.
+    datapoints = n() # how many datapoints.
+  )
+
+print(summary_sex_based_table)
+
+summary_sex_based_table_temp <- summary_sex_based_table %>%
+  pivot_longer(
+    cols = c(mean_income, median_income, sd_income, min_income, max_income),
+    names_to = "Income_tabular",
+    values_to = "Income_stats",
+    cols_vary = "fastest",
+    names_prefix = NULL,
+    names_sep = NULL,
+    names_pattern = NULL,
+    names_ptypes = NULL,
+    names_transform = NULL,
+    names_repair = "check_unique",
+    values_drop_na = FALSE,
+    values_ptypes = NULL,
+    values_transform = NULL
+  )
+
+# The brewer scales provide sequential, diverging and qualitative colour schemes from ColorBrewer. These are particularly well suited to display discrete values on a map. See https://colorbrewer2.org for more information.
+# scale_fill_brewer(
+#   name = waiver(),
+#   ...,
+#   type = "seq",
+#   palette = 1,
+#   direction = 1,
+#   aesthetics = "fill"
+# )
+ggplot(summary_sex_based_table_temp, aes(x = factor(sex), y = Income_stats, fill = Income_tabular)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(
+    title = "Income Statistics by Sex (1=Male, 2=Female)",
+    x = "Sex (1=Male, 2=Female)",
+    y = "Income",
+    fill = "Income_tabular"
+  ) +
+  scale_fill_brewer(palette = "Set2")
+
+
+#### Sex-Race based mean, median, sd, min and max.
+summary_sex_race_based_table <- nlsy_race_based_subset %>%
+  group_by(sex, race) %>%
+  dplyr::summarize(
+    mean_income = mean(income, na.rm = TRUE), # Mean income
+    median_income = median(income, na.rm = TRUE), # Median income
+    sd_income = sd(income, na.rm = TRUE), # Std. Div. income
+    min_income = min(income, na.rm = TRUE), # min income
+    max_income = max(income, na.rm = TRUE), # max income
+    datapoints = n()
+  )
+
+print(summary_sex_race_based_table)
+
+summary_sex_based_table_temp <- summary_sex_race_based_table %>%
+  pivot_longer(
+    cols = c(mean_income, median_income, sd_income, min_income, max_income),
+    names_to = "Income_tabular",
+    values_to = "Income_stats",
+    cols_vary = "fastest",
+    names_prefix = NULL,
+    names_sep = NULL,
+    names_pattern = NULL,
+    names_ptypes = NULL,
+    names_transform = NULL,
+    names_repair = "check_unique",
+    values_drop_na = FALSE,
+    values_ptypes = NULL,
+    values_transform = NULL
+  )
+
+# The brewer scales provide sequential, diverging and qualitative colour schemes from ColorBrewer. These are particularly well suited to display discrete values on a map. See https://colorbrewer2.org for more information.
+# scale_fill_brewer(
+#   name = waiver(),
+#   ...,
+#   type = "seq",
+#   palette = 1,
+#   direction = 1,
+#   aesthetics = "fill"
+# )
+ggplot(summary_sex_based_table_temp, aes(x = factor(race), y = Income_stats, fill = Income_tabular)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ sex) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Income Statistics by Sex (1=Male, 2=Female)",
+    x = "Sex (1=Male, 2=Female)",
+    y = "Income",
+    fill = "Income_tabular"
+  ) +
+  scale_fill_brewer(palette = "Set2")
+
+cat("Model-3 Analysis: 1. Male mean, median, sd, and datapoints is more than woman. Male group do earn more money compared to female counterparts, and have the more standard deviation distribution. 2. Non-Hispanic/Non-Black Male and Female tends to get more income compare to other groups. Black race has gotten the less income compared to all the other groups. Mixed race(Non-Hispanic) has highest minimum income but minimum maximum income, with a very few datapoints.")
+```
+## Sex-based differences (Chapter-3).
+### From: https://www.nlsinfo.org/investigator/pages/search#
+### From: https://nlsinfo.org/content/cohorts/nlsy79/topical-guide/marriage-and-children/marital-status-marital-transitions-and?utm_source=chatgpt.com
+```{r} 
+####################################################################### GRAPHICAL SUMMARY - Graph-1 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME.
+# PGraph-1: Income Distribution by Sex (1=Male, 2=Female)
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+                     y = income), # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+                     environment = parent.frame()) + 
+  geom_boxplot() +
+  labs(x = "Sex (1=Male, 2=Female)", 
+       y = "Income", 
+       title = "Graph-1: Income Distribution by Sex (1=Male, 2=Female)",
+       subtitle = waiver(),
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()
+  ) +
+  theme_minimal()
+
+# Summary:
+# -	Model-3: Clearer balanced box, as imputation process involved. 
+# -	Model-3: Shows clearly distribution trends with no significant data loss.
+# -	Overall, male has better income than woman. The 25-75%percentile box and outlines show that in all the graphs. Man do have more outlines compared to woman.
+
+
+####################################################################### GRAPHICAL SUMMARY - Graph-2 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH FILLING OF FACTORS OF HIGHEST DEGREE OBTAINED.
+# Income Distribution by Sex and education (1=Male, 2=Female) and Education level
+# 
+# labels = c("1. No formal education", # 8 education levels.
+#                                                                          "2. 1st to 8th grade",
+#                                                                          "3. Some high school (no diploma)",
+#                                                                          "4. High school diploma or equivalent (e.g., GED)",
+#                                                                          "5. Some high school",
+#                                                                          "6. Associate degree",
+#                                                                          "7. Bachelor's degree",
+#                                                                          "8. Graduate or higher degree")
+
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+                     y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+                     fill=factor(CV_HIGHEST_DEGREE_1112_2011, labels = c("1. No formal education", # 8 education levels.
+                                                                         "2. 1st to 8th grade",
+                                                                         "3. Some high school (no diploma)",
+                                                                         "4. High school diploma or equivalent (e.g., GED)",
+                                                                         "5. Some high school",
+                                                                         "6. Associate degree",
+                                                                         "7. Bachelor's degree",
+                                                                         "8. Graduate or higher degree",
+                                                                         "9. NA")))) +
+  geom_boxplot() +
+  labs(x = "Sex (1=Male, 2=Female)", 
+       y = "Income", 
+       fill = "Education Level", 
+       title = "Graph-2: Income Distribution by Sex (1=Male, 2=Female) and Education level",
+       subtitle = waiver(),
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()) +
+  theme_minimal()
+
+# Summary: In the top-coded models, if you have graduate degree or more, level-8, you are the top income earner. With the level increasing, the incomes are increasing. With the non-top coded values, the bachelor’s degree is the highest income earner, overall, in the male category, except in female group level-08 is the highest income earner. Graph is gradually going upwards with education qualifications, most of the time.
+
+####################################################################### GRAPHICAL SUMMARY - Graph-3 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH FILLING OF FACTORS OF MARITAL STATUS.
+# Plot grouped boxplot by sex and Marital status.
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+                     y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+                     fill=factor(CV_MARSTAT_COLLAPSED_2017, labels = c("1. Never Married",  # 5 marital status.
+                                                                       "2. Married",
+                                                                       "3. Separated",
+                                                                       "4. Divorced",
+                                                                       "5. Widowed",
+                                                                       "6. NA")))) +
+  geom_boxplot() +
+  labs(x = "Sex (1=Male, 2=Female)", 
+       y = "Income", 
+       fill = "Marital status", 
+       title = "Graph-3: Income Distribution by ex (1=Male, 2=Female) and Marital status (in factos)",
+       subtitle = waiver(),
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()) +
+  theme_minimal()
+
+# Summary: Overall, in the top-coded model, married man tends to earn more income than other male groups, whereas, separated female earns more than other female groups. Same for the non-trend coded graphs. 
+
+####################################################################### GRAPHICAL SUMMARY - Graph-4 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH FILLING OF FACTORS OF CRIMINAL HISTORY.
+# Plot grouped boxplot by sex and Criminal history.
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+           y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+           fill=factor(INCARC_TOTNUM_XRND))) + # Criminal history.
+  geom_boxplot() +
+  labs(x = "Sex (1=Male, 2=Female)", 
+       y = "Income", 
+       fill = "Criminal history", 
+       title = "Graph-4: Income Distribution by Sex (1=Male, 2=Female) and Ciminal history (in factors)",
+       subtitle = waiver(),
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()) +
+  theme_minimal()
+
+# Summary: Model-3 seems uniform, with the criminal history involved, people don’t earn more, not even an outlier in the upper part. Zero criminal history tends to earn more, overall, except for model-2 top-coded. Zero criminal history is winning at non-top coded models. 
+
+####################################################################### GRAPHICAL SUMMARY - Graph-5 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH FILLING OF FACTORS OF DRUGS USE IN THE LAST 30 DAYS.
+# Plot grouped boxplot by sex and Drugs use.
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+           y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+           fill=factor(`YSAQ-371_2000`))) + # Drugs use.
+  geom_boxplot() +
+  labs(x = "Sex (1=Male, 2=Female)", 
+       y = "Income", 
+       fill = "Drug use", 
+       title = "Graph-5: Income Distribution by Sex (1=Male, 2=Female) and Drug use (in factors)",
+       subtitle = waiver(),
+       caption = waiver(),
+       tag = waiver(),
+       alt = waiver(),
+       alt_insight = waiver()) +
+  theme_minimal()
+
+# Summary: Model-3 is looking good overall, with overall good, distributed data. No perfect relationship. But most outliers with zero drug history in the last 30n days. Model-3 non-top-coded looks best.
+
+####################################################################### GRAPHICAL SUMMARY - Graph-6 #######################################################################
+
+# Plot grouped boxplot by sex and net worth category
+# This function allows you to vectorise multiple if_else() statements. Each case is evaluated sequentially and the first match for each element determines the corresponding value in the output vector. If no cases match, the .default is used as a final "else" statment.
+
+# Divide the childhood household income into three categories.
+nlsy_sex_based_subset <- nlsy_sex_based_subset %>% # Sex-based dataset
+  mutate(
+    CV_HH_NET_WORTH_P_1997_category = case_when(
+      CV_HH_NET_WORTH_P_1997 < 25000 ~ "Low (i.e., <25000)",
+      CV_HH_NET_WORTH_P_1997 >= 25000 & CV_HH_NET_WORTH_P_1997 < 75000 ~ "Medium (i.e., >=25000 to <75000)",
+      CV_HH_NET_WORTH_P_1997 >= 75000 ~ "High (i.e., >= 75000)",
+      TRUE ~ "Unknown",
+      .default = NULL, 
+      .ptype = NULL, 
+      .size = NULL
+    ),
+    .by = NULL,
+    .keep = c("all", "used", "unused", "none"),
+    .before = NULL,
+    .after = NULL
+  )
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH FILLING OF CHILDHOOD HOUSEHOLD NET WORTH.
+ggplot(nlsy_sex_based_subset, # Sex-based dataset
+       mapping = aes(x = factor(sex), # Sex (1=Male, 2=Female)
+                  y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+                  fill = CV_HH_NET_WORTH_P_1997_category)) + # filled up with childhood household net worth category.
+  geom_boxplot() +
+  labs(
+    x = "Sex (1 = Male, 2 = Female)", 
+    y = "Income", 
+    fill = "Childhood Net Worth",
+    title = "Graph-6: Income Distribution by Sex (1=Male, 2=Female) and Childhood Household Net Worth (in factors)",
+    subtitle = waiver(),
+    caption = waiver(),
+    tag = waiver(),
+    alt = waiver(),
+    alt_insight = waiver()
+  ) +
+  theme_minimal()
+
+# Summary: High-income (>=75000) in the childhood household plays significant part to earn more money for the future young generation. Model-3 is good overall, more well-distributed, with non-top-coded values. And, in the same way, Low-income (<25000) in the childhood household plays significant part to earn comparatively less money in the future for the future young generation. Middle-income (>=25000 to <75000) in the childhood household plays significant part to earn comparatively middle income for the future young generation.
+
+####################################################################### GRAPHICAL SUMMARY - Graph-7 #######################################################################
+
+# X-AXIS: FACTOR SEX (1: MALE, 2: FEMALE), Y-AXIS: INCOME WITH TOP 30 OCCUPATION/JOBS..
+# Plot grouped box plot by combined profession and sex
+top_20_professions_df <- nlsy_sex_based_subset %>% # Sex-based datasets
+  group_by(`YEMP_OCCODE-2002.01_2017`, # Occupation, as different job shows different incomes.
+           .add = FALSE) %>% 
+  dplyr::summarize(datapoints = n(), # count the number of datapoints.
+            .by = NULL, 
+            .groups = NULL) %>% 
+  arrange(desc(datapoints), # for top 30 professions
+          .by_group = FALSE) %>%
+  slice_head(n = 30) # how many head data we want in desecending order.
+
+nlsy_sex_based_subset_occupation_income <- nlsy_sex_based_subset %>% # Sex-based datasets
+  filter(`YEMP_OCCODE-2002.01_2017` %in% top_20_professions_df$`YEMP_OCCODE-2002.01_2017`) # Filter out 30 top professional in top_20_professions_df.
+
+ggplot(nlsy_sex_based_subset_occupation_income, 
+       mapping = aes(x = factor(`YEMP_OCCODE-2002.01_2017`), # Occupation, as different job shows different incomes.
+                     y = income, # income (U2857200, YINC-1700, TOTAL INCOME FROM WAGES AND SALARY IN PAST YEAR)
+                     fill = factor(sex))) + # Sex (1=Male, 2=Female)
+  geom_boxplot() +
+  labs(
+    x = "Top 30 Professions (Occupation - Industry)", 
+    y = "Income", 
+    fill = "Sex",
+    title = "Graph-7: Income Distribution by Top 30 Professions and Sex",
+    subtitle = waiver(),
+    caption = waiver(),
+    tag = waiver(),
+    alt = waiver(),
+    alt_insight = waiver()
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, 
+                                   hjust = 1,
+                                   size = NULL,
+                                   vjust = NULL,
+                                   lineheight = NULL,
+                                   color = NULL,
+                                   margin = NULL,
+                                   debug = NULL,
+                                   inherit.blank = FALSE))
+
+# Summary: Male group is earning more salary than a woman for a top 30 profession compared to female group. Model-3 looks well-distributed, less skewed. 
+
+# Themes are a powerful way to customize the non-data components of your plots: i.e. titles, labels, fonts, background, gridlines, and legends. Themes can be used to give plots a consistent customized look. Modify a single plot's theme using theme(); see theme_update() if you want modify the active theme, to affect all subsequent plots. Use the themes available in complete themes if you would like to use a complete theme such as theme_bw(), theme_minimal(), and more. Theme elements are documented together according to inheritance, read more about theme inheritance below.
+
+cat("2.iii. Did you produce any tables or plots that you thought would reveal interesting trends but didn’t?")
+# Answer: I been comparing top-coded and non-top-coded for Model-1, 2 and 3. Model-3 -- current one, all the models mentioned above) looks good so far. I been analyzing all the trends with tabular summaries, graphical summaries etc. Less standard deviation for income in Model-3 as well. and looking with except to CV_URBAN-RURAL_AGE_12_1997, all others independent predictors looks good. I wanted to see better trends in Graph-5: Income Distribution by Sex (1=Male, 2=Female) and Drug use (in factors).
+
+# All of the plots are showing above. For the Graph-5: Income Distribution by Sex (1=Male, 2=Female) and Drug use (in factors), i expected better results after applying mean to the missing NA in income outcome and applying impute() method, for the independent predictors and making a new category "NA" for the NA values for the categorical factor, although, i may have been overestimating the income is related to drug issues. 
+
+cat("2.iv. What relationships did you investigate that don’t appear in your findings section??")
+# Answer: The childhood household income been playing major part in the future income of people living in those household. It occurs in many part. but, it is not showing results, but not as to the extend the way the correlation matrix shows, gender wise, I investigate it in graphical summaries, co-relation and regression, a simple model-1 and hierarchical, model-2 for the sex-gender wise.
+
+cat("2.v. What’s the analysis that you finally settled on? What income and gender related factors do you investigate in the final analysis?")
+# I am investigating the following all sex based different variables, but I'm ruling out CV_URBAN-RURAL_AGE_12_1997 as it didn't get good results, with all the other independent predictors. I am using simple all of the factors CV_HGC_BIO_MOM_1997, CV_HGC_BIO_DAD_1997, CV_HIGHEST_DEGREE_1112_2011, CV_MARSTAT_COLLAPSED_2017, INCARC_TOTNUM_XRND, CV_HH_NET_WORTH_P_1997, CV_HH_NET_WORTH_P_1997, 'YEMP_OCCODE-2002.01_201', 'YEMP_INDCODE-2002.01_2017', 'CV_AGE_12/31/96_1997' etc. I will check the simple regression model-1 and multilevel regression ex. like, (factor(sex)*factor(CV_HGC_BIO_MOM_1997) to see gender specific effects and outcome for linear regression results.
+
+# All the geneder related factor described below. I am not taking race and 'CV_URBAN-RURAL_AGE_12_1997'.
+# sex_based_diff_var <- c(
+#   "income",                       # The dependent income in 2017, YINC-1700_2017, U2857200.
+#   "sex",                          # Sex : Male (1), Female (2). (factorized for analysis)
+#   "race",                         # Race : Black (1), Hispanic (2), Mixed Race (Non-Hispanic) (3), Non-Black/Non-Hispanic (4)
+#   "CV_HGC_BIO_MOM_1997",          # Biological Mom's highest grade completed.
+#   "CV_HGC_BIO_DAD_1997",          # Biological Dad's highest grade completed.
+#   "CV_HIGHEST_DEGREE_1112_2011",  # Education level, Highest degree attained by 2011 (Total eight categories from no formal education to graduate degree)
+#   "CV_MARSTAT_COLLAPSED_2017",    # Marital status, Five categories, including Never Married, Married, Separated, Divorced, Widowed.
+#   "INCARC_TOTNUM_XRND",           # Total number of incarcerations, since the past criminal history affects income of the future.
+#   "CV_HH_NET_WORTH_P_1997",       # Childhood household net worth for wealth related advantages/disadvantages.
+#   "YSAQ-371_2000",                # Drug use history (last 30 days history)
+#   "YEMP_OCCODE-2002.01_2017",     # Occupation, as different job has different incomes.
+#   "YEMP_INDCODE-2002.01_2017",    # Industry of employment, affects different income levels.
+# #  "CV_URBAN-RURAL_AGE_12_1997",  # RS RESIDENCE URBAN OR RURAL AT AGE 12	
+#   "CV_AGE_12/31/96_1997"          # Age to experience related income differences. (How young the respond-er was at 12/31/96-1997)
+# )
+
+####################################################################### CONFIDENCE INTERVAL #######################################################################
+
+# The t-test is comparing the average earnings of two distinct categories (organized by sex) using the test known as the t-test. It examines the null hypothesis:
+# H_0 ∶ μ_1= μ_2
+# Against the alternate hypothesis, true difference in means between group Male & group Female is not equal to 0.
+# H_1 ∶ μ_1≠ μ_2
+# i.e., μ_1 and μ_2 showing the population mean incomes for the male and female respectively.
+# 	t-value represents the difference comparing to the variation of the data. A high t-value indicates that it is not probable that the group differences in mean happened by accident.
+# 	Degree of freedom represents the unequal variance between male and female’s income values.
+# The strong evidence against null hypothesis, thus, we are rejecting the null hypothesis.
+
+nlsy_sex_based_subset_temp <- nlsy %>% 
+  select(all_of(sex_based_diff_var))
+
+cat("Model-3 Analysis: In statistics, Welch's t-test, or unequal variances t-test, is a two-sample location test which is used to test the (null) hypothesis that two populations have equal means. It is named for its creator, Bernard Lewis Welch, and is an adaptation of Student's t-test,[1] and is more reliable when the two samples have unequal variances and possibly unequal sample sizes.here, unequal variance, different sample size between male and female and more reliable than student's t-test. It will show the 95% confidence interval. Sample size is df here is 8842.1, substantial larger size for both male and female groups. The CLT theorem ensures, that sampling distribution of the mean is normal here. When you've got a big sample size, a Welch t-test continues to produce precise outcomes regardless of whether the information from the research isn't quite regularly distribution. here male and female group data assumed to be normally distributed as stated in the question. matters when sample size is less than 30. Same for the sampling distribution of the difference in means, as here. But, we are getting df=8842, so its presumed normal according to CLT. And, Welch's t-test is good for it. So, it's a good thing to get result.")
+
+# Formula: {\displaystyle t={\frac {\Delta {\overline {X}}}{s_{\Delta {\bar {X}}}}}={\frac {{\overline {X}}_{1}-{\overline {X}}_{2}}{\sqrt {{s_{{\bar {X}}_{1}}^{2}}+{s_{{\bar {X}}_{2}}^{2}}}}}\,}
+
+####################################################################### A HYPOTHETICAL TEST #######################################################################
+
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+t_test_res <- t.test(income ~ factor(sex), data = nlsy_sex_based_subset, na.action = na.omit)
+print("\nt_test_result is: \n")
+print(t_test_res)
+
+#t.test(male_income, female_income, alternative = "two.sided")
+#print(t_test_result)
+
+cat("Model-3 Analysis: p-value here is: < 2.2e-16, indicating strong evidence to reject the null hypothesis of no difference in means. The 95% confidence interval doesn’t include lowest zero income, as gaps in income. The test confirms significant income differences, with males earning substantially more on average than females. So, here, the difference, μ_1-μ_2, 50775.95−43543.26=6662.75 falls in the 95% confidence interval. For, even in non-top-coded model, overall, all the Model-1, Model-2 and Model-3 confirms that significant income differences, with males earning substantially more on average than females. T-value is here higher than top-coded model. So, for all, Model-1 (no NA removal), Model-2 (Omit observations with all missing value/-s in a row, even when the single missing values in the row), and Model-3(Variables with meaningless above 80% excluded and moderate-missingness variables imputed using mean for dependent variable and imputation for continuous variable and different ‘NA’ category for missing variables), we can confirm by looking at p-value, males earning substantially more on average than females. P-value is here higher in non-top-coded model than top-coded model, to reject the null hypothesis.")
+```
+### COMBINED SEX-BASED ANALYSIS correlation. 
+```{r}
+# Number of NA values in each column and number or rows in the dataset.
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+# Select (and optionally rename) variables in a data frame, using a concise mini-language that makes it easy to refer to variables based on their name (e.g. a:f selects all columns from a on the left to f on the right) or type (e.g. where(is.numeric) selects all numeric columns).
+
+library(knitr)
+
+# Filter numeric data for males
+temp_df <- nlsy_sex_based_subset %>%
+  select(where(is.numeric))
+
+cor_combined <- cor(temp_df, # All the numeric values.
+                    use = "complete.obs")
+
+print("Correlation Matrix for Combined Male and Female both:\n")
+print(cor_combined)
+```
+
+### MALE SEX-BASED ANALYSIS correlation.
+```{r}
+# Filter numeric data for males 
+temp_df_male <- nlsy_sex_based_subset %>%
+  filter(sex == 'Male') %>% # where sex == Male
+  select(where(is.numeric)) # for all numeric values.
+
+cor_male <- cor(temp_df_male, # All the numeric values where sex = "male"
+                use = "complete.obs")
+print("Correlation Matrix for Males:\n")
+print(cor_male)
+```
+
+### FEMALE SEX-BASED ANALYSIS correlation.
+```{r}
+# Filter numeric data for females
+temp_df_female <- nlsy_sex_based_subset %>%
+  filter(sex == 'Female') %>% # where sex == Female
+  select(where(is.numeric)) # for all numeric values.
+
+cor_female <- cor(temp_df_female, # All the numeric values where sex = "female"
+                  use = "complete.obs")
+print("Correlation Matrix for Females:\n")
+print(cor_female)
+```
+Model-3 Correlation Summary: For male group, highest degree (more significant), childhood household net worth, race plays a significant role for income. Same for the Model-1 and Model-3. For female group, dad-mom’s highest-grade completed, highest degree (more significant), childhood household net worth, plays a significant role. Overall, a highest degree (more significant), childhood household net worth are more important for both gender group and more significant to the income outcome.
+
+### SCATTERPLOTS SEX-BASED ANALYSIS correlation
+```{r}
+# A matrix of scatterplots is produced.
+
+# ## Default S3 method:
+# pairs(x, labels, panel = points, ...,
+#       horInd = 1:nc, verInd = 1:nc,
+#       lower.panel = panel, upper.panel = panel,
+#       diag.panel = NULL, text.panel = textPanel,
+#       label.pos = 0.5 + has.diag/3, line.main = 3,
+#       cex.labels = NULL, font.labels = 1,
+#       row1attop = TRUE, gap = 1, log = "",
+#       horOdd = !row1attop, verOdd = !row1attop)
+
+# Create pairwise scatter plots for combined male and female.
+pairs(temp_df, 
+      main = "Pairwise Scatterplots of Quantitative Variables (Males)")
+
+# Create pairwise scatter plots for males
+pairs(temp_df_male, 
+      main = "Pairwise Scatterplots of Quantitative Variables (Males)")
+
+# Create pairwise scatter plots for females
+pairs(temp_df_female, 
+      main = "Pairwise Scatterplots of Quantitative Variables (Females)")
+```
+
+### REGRESSION MODEL (SIMPLE)
+```{r}
+####################################################################### Regression Model #######################################################################
+# Number of NA values in each column and number or rows in the dataset.
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+```
+# Model-3 Simple regression.
+
+•	This regression offers factor(sex): CV_HGC_BIO_MOM_1997, mean the effects of predictors to differ by sex (i.e., 1=Male, 2=Female).
+•	Income is an outcome, Y dependent variable here. And all the other demographic factor as an independent predictor. 
+•	Intercept: Anticipated earnings (the starting point classification for male respondents) provided each predictor remain zero.
+•	Factor(sex) Female: The difference of income for females compared to males., when all the other predictors are non-significant (i.e., zero)
+•	When Pr(>|t|) < 0.05, the independent predictor associate with the income dependent variable, otherwise not. It could be positive associate or negative association with the dependent variable, income.
+
+1.	Negative relationships: (p<0.05)
+    a. YEMP_OCCODE-2002.01_2017: -2.095e+00 (coeff.), 4.76e-11 (p-value). Having a occupation/job is associated with a $-2.095e+00 increase in income.
+    b. factor(sex)Female: -1.177e+04 (coeff.), 5.12e-13 (p-value): Having an sex==female, is associated with a -1.177e+04 increase in income.
+  
+2. Model evaluation:
+  	a. R-squared: 0.2763, about 27.63% of the variance in income explained by the predictors.
+    b. Adjusted R-squared: 0.2692, for number of predictors.
+    c. F-statistic is 4.981 is not much significant with overall model regression p-value <2.2e-16.
+
+3.	Plots: 
+    a.  Residual vs Fitted plot: randomly scattered around zero line, a reasonable linearity.
+    b.	Q-Q plot: Although the tails appear to be abnormal, the remaining values are roughly normal, this could affect reliability intervals or hypothesis testing.s
+    c.	Scale-Location Plot: possibility of breaking the an assumption of equal or similar variances in different groups being compared.
+    d.	Residuals vs. Leverage Plot: Some data points (such as those with the labels "37620" and "31116") possess substantial strain and noticeable residuals.
+    e.  Acceptable because the CLT reduced the impact of non-linearity, A number of highly leveraged points could influence the regression's outcome.
+    f. QQ Plot of residual: Deviation in the tail, apart from it, residuals are normally distributed. Upper tail are outliers and so are lowr tail.
+
+
+```{r}
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+# Linear regression model with normal without factor.
+sex_based_data_df <- lm(income ~ factor(sex) + CV_HGC_BIO_MOM_1997 +
+            CV_HGC_BIO_DAD_1997 + CV_HIGHEST_DEGREE_1112_2011 +
+            factor(CV_MARSTAT_COLLAPSED_2017) + INCARC_TOTNUM_XRND +
+            CV_HH_NET_WORTH_P_1997 + `YSAQ-371_2000` +
+            `YEMP_OCCODE-2002.01_2017` + `YEMP_INDCODE-2002.01_2017` +
+            `CV_AGE_12/31/96_1997`, data = nlsy_sex_based_subset)
+
+# Summary of the regression
+summary(sex_based_data_df)
+
+# Residual diagnostics
+par(mfrow = c(2, 2))  # Set up 2x2 plotting space
+plot(sex_based_data_df)
+
+# Check normality of residuals
+qqPlot(sex_based_data_df$residuals, main = "QQ Plot of Residuals")
+
+# Extract coefficients and p-values
+coeff_summary <- tidy(sex_based_data_df)
+print(coeff_summary)
+```
+
+### Model-3 REGRESSION MODEL-2 (USING FA FOR FEMALE, REFERNCING TO MALE AS BASE)
+
+•	This regression offers factor(sex): CV_HGC_BIO_MOM_1997, mean the effects of predictors to differ by sex (i.e., 1=Male, 2=Female).
+•	Income is an outcome, Y dependent variable here. And all the other demographic factor as an independent predictor. 
+•	Intercept: Anticipated earnings (the starting point classification for male respondents) provided each predictor remain zero.
+•	Factor(sex) Female: The difference of income for females compared to males., when all the other predictors are non-significant (i.e., zero)
+•	When Pr(>|t|) < 0.05, the independent predictor associate with the income dependent variable, otherwise not. It could be positive associate or negative association with the dependent variable, income.
+
+1.	Positive relationships: (p<0.05)
+    a. CV_HIGHEST_DEGREE_1112_20114: 1.504e+04 (coeff.), 0.002018 (p-value). Having a HIGHEST DEGREE is associated with a $1.504e+04 increase in income.
+    b. CV_HIGHEST_DEGREE_1112_20114: 2.594e+04 (coeff.), 0.000366 (p-value). Having a HIGHEST DEGREE is associated with a $2.594e+04 increase in income.
+    b. CV_HIGHEST_DEGREE_1112_20116: 6.918e+04 (coeff.), 5.80e-05 (p-value). Having a HIGHEST DEGREE is associated with a $6.918e+04 increase in income.
+    b. CV_HIGHEST_DEGREE_1112_20117: 7.310e+04 (coeff.), 0.001426 (p-value). Having a HIGHEST DEGREE is associated with a $7.310e+04 increase in income.
+    e. CV_MARSTAT_COLLAPSED_20171: 5.793e+03 (coeff.), 0.010393 (p-value). Having a Marital status is associated with a $5.793e+03 increase in income.
+    
+2. Negative relationships: (p<0.05)
+    a. YEMP_OCCODE-2002.01_2017: -2.084e+00 (coeff.),6.72e-08 (p-value). Having a Job/Occupation is associated with a -$2.084e+00 increase in income.
+
+2. Model evaluation:
+  	a. R-squared: 0.3113, about 31.13% of the variance in income explained by the predictors.
+    b. Adjusted R-squared: 0.2153, for number of predictors.
+    c. F-statistic is 3.243 is not much significant with overall model regression p-value <2.2e-16.
+
+3.	Plots: 
+    a.  Residual vs Fitted plot: Mostly evenly scattered plots. Some random scatter, but not much.
+    b.	Q-Q plot: Seems normal. Align with diagonal line, excepts lower and higher end tail.
+    c.	Scale-Location Plot: the variability of a variable is relatively equal across the range of values of a second variable that predicts it, which is minimal.
+    d.	Residuals vs. Leverage Plot: -	Very less high leverage points. 5721 is visible.
+    e.  QQ Plot of residual: Deviation in the tail, apart from it, residuals are normally distributed. Upper tail are outlines. 
+    f.  Mostly linear, deviates in normality in tails, increasing variance with fitted values. Overall, better then the previous one.
+    
+```{r}
+####################################################################### Regression Model (For female, referencing to male as base) ##################################################################
+print(colSums(is.na(nlsy_sex_based_subset)))
+cat("The number of rows in the dataset: ", nrow(nlsy_sex_based_subset))
+
+nlsy_sex_based_subset$new_column <- rep(NA, nrow(nlsy_sex_based_subset))
+
+# Linear regression model with normal without factor.
+sex_based_data_df_fenale <- lm(income ~ factor(sex) * CV_HGC_BIO_MOM_1997 +
+                        factor(sex) * CV_HGC_BIO_DAD_1997 + factor(sex) * CV_HIGHEST_DEGREE_1112_2011 +
+                        factor(sex) * CV_MARSTAT_COLLAPSED_2017 + factor(sex) * INCARC_TOTNUM_XRND +
+                        factor(sex) * CV_HH_NET_WORTH_P_1997 + factor(sex) * `YSAQ-371_2000` +
+                        factor(sex) * `YEMP_OCCODE-2002.01_2017` + factor(sex) * `YEMP_INDCODE-2002.01_2017` +
+                        factor(sex) * `CV_AGE_12/31/96_1997`, data = nlsy_sex_based_subset)
+
+# Summary of the regression
+summary(sex_based_data_df_fenale)
+
+# Residual diagnostics
+par(mfrow = c(2, 2))  # Set up 2x2 plotting space
+plot(sex_based_data_df_fenale)
+
+# Check normality of residuals
+qqPlot(sex_based_data_df_fenale$residuals, main = "QQ Plot of Residuals (for female, referencing to male as base)")
+
+# Extract coefficients and p-values
+temp_factor_sex_coeff_summary <- tidy(sex_based_data_df_fenale)
+print(temp_factor_sex_coeff_summary)
+```
+
+
+<!-- ### The income distributing is right-skewed like one might expect.  However, as indicated in the question description, the income variable is *topcoded* at the 2% level.  More precisely, (with tobit regression) -->
+<!-- ### https://cran.r-project.org/web/packages/censReg/censReg.pdf -->
+<!-- ```{r} -->
+<!-- topcoded_tobit <- max(nlsy_sex_based_subset$income, na.rm = TRUE) # Top coded income value. -->
+<!-- cat("topcoded value: ", topcoded_tobit) -->
+
+<!-- lsy_tobit_data <- nlsy_sex_based_subset %>% -->
+<!--   mutate(income_censored = ifelse(income == topcoded_tobit,  -->
+<!--                                   NA,  -->
+<!--                                   income)) -->
+
+<!-- tobit_model <- censReg(income ~ factor(sex) * CV_HGC_BIO_MOM_1997 + -->
+<!--     factor(sex) * CV_HGC_BIO_DAD_1997 + factor(sex) * CV_HIGHEST_DEGREE_1112_2011 + -->
+<!--     factor(sex) * CV_MARSTAT_COLLAPSED_2017 + factor(sex) * INCARC_TOTNUM_XRND + -->
+<!--     factor(sex) * CV_HH_NET_WORTH_P_1997 + factor(sex) * `YSAQ-371_2000` + -->
+<!--     factor(sex) * `YEMP_OCCODE-2002.01_2017` + factor(sex) * `YEMP_INDCODE-2002.01_2017` + -->
+<!--     factor(sex) * `CV_AGE_12/31/96_1997`, -->
+<!--   data = nlsy_sex_based_subset, -->
+<!--   left = -Inf,      # No left-censoring -->
+<!--   right = topcoded_tobit # Right-censoring at top coded_income -->
+<!-- ) -->
+
+<!-- summary(tobit_model) -->
+<!-- ``` -->
+
+
+##Conclusions and Discussion:
+Key Insights:
+1. Gender Pay Gap: Significant income disparities persist between males and females, even after controlling for education and other socioeconomic factors. Higher education, and childhood household economic factors plays significant role for the future income.
+2. Education and Income: Education is a critical driver of income, but its benefits are not enough to close the gender gap.
+3. Intersectionality: Income disparities are influenced by both gender and race, emphasizing the need for multifaceted policy interventions.
+4. We got the best distribution and results under Model-3 (Model-3) Variables with meaningless above 80% excluded and moderate-missingness variables imputed using mean for dependent variable and imputation for continuous variable and different ‘NA’ category for missing variables, compared to model-1 (including null values) and Model-2 (omitting of all null values).
+5. So, for all, Model-1 (no NA removal), Model-2 (Omit observations with all missing value/-s in a row, even when the single missing values in the row), and Model-3(Variables with meaningless above 80% excluded and moderate-missingness variables imputed using mean for dependent variable and imputation for continuous variable and different ‘NA’ category for missing variables), we can confirm by looking at p-value and 95% confidence interval, males earning substantially more on average than females. P-value is here higher in non-top-coded model than top-coded model, to reject the null hypothesis.
+6. For male group, highest degree (more significant), childhood household net worth, race plays a significant role for income. Same for the Model-1 and Model-3. For female group, dad-mom’s highest-grade completed, highest degree (more significant), childhood household net worth, plays a significant role. Overall, a highest degree (more significant), childhood household net worth are more important for both gender group and more significant to the income outcome.
+7. Yes, from dependent variable and independetvariable, our Model is fit. But having the correct data instead of missing values, would be a great. Right now, we do only have result from impute() method for continues independent predictors. 
+
+Limitations:
+1. Low F-value in regression: The regression model has lower F-value. Although it gets p-value comparatively low.
+2. Expecting some more negative co-efficients in Regression model-2.
+2. Missing Data: Imputation may have introduced biases, particularly in highly missing variables. But having the correct data instead of missing values, would be a great. Right now, we do only have result from impute() method for continues independent predictors. Like occupation/industrial job, last 30 days drug history and etc. many respondents have skipped answers.
+
+Confidence in Findings:
+The results are robust for academic discussions but would benefit from further validation before informing policy decisions. Missing data is the real problem. Although, i believe mentioned independent predictors above can make a difference as I tested, all Top-coded and Non-Top-coded with Models-1,2 and 3, almost all is getting T-test hypothesis result and regression result correct. So, I believe in taking this tests. Given the result for confidence interval, a hypothesis test and a regression model, I am confident enough in your analysis and findings to present them to policy makers. 
+
+
+# RACE-BASED ANALYSIS.
+```{r}
+library(dplyr)
+
+# Subset the required columns from the dataset
+race_based_data <- nlsy %>%
+  select(all_of(race_based_diff_var))
+
+# Perform grouping and summarization
+summary_race_based_table <- race_based_data %>%
+  group_by(race) %>%
+  dplyr::summarize(
+    mean_income = mean(income, na.rm = TRUE),
+    sd_income = sd(income, na.rm = TRUE),
+    count = n()
+  )
+
+# Print the summarized table
+print(summary_race_based_table)
+
+# Visualize income by race
+ggplot(race_based_data, aes(x = factor(race), y = income)) +
+  geom_boxplot() +
+  labs(x = "Race", y = "Income", title = "Income Distribution by Race") +
+  theme_minimal()
+```
+
+
+```{r}
+# Save cleaned dataset
+write_csv(nlsy_sex_based_subset, "nlsy_cleaned.csv")
+cat("Analysis complete. Cleaned data and results exported.")
+```
